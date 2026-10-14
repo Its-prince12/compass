@@ -124,6 +124,78 @@ const f1=x=>x==null?'–':String(Math.round(x*10)/10);
 const uid=()=>Math.random().toString(36).slice(2,9);
 function pearson(a,b){const n=a.length;if(n<3)return 0;const ma=mean(a),mb=mean(b);let nu=0,da=0,db=0;for(let i=0;i<n;i++){const x=a[i]-ma,y=b[i]-mb;nu+=x*y;da+=x*x;db+=y*y}return da&&db?nu/Math.sqrt(da*db):0}
 
+/* ---------- encrypted cloud backup ---------- */
+const te=new TextEncoder(),td=new TextDecoder();
+const b64e=buf=>{const b=new Uint8Array(buf);let s='';for(let i=0;i<b.length;i+=8192)s+=String.fromCharCode.apply(null,b.subarray(i,i+8192));return btoa(s)};
+const b64d=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function backupKey(pass,salt){
+ const km=await crypto.subtle.importKey('raw',te.encode(pass),'PBKDF2',false,['deriveKey']);
+ return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:120000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function encryptBackup(pass,text){
+ const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+ const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},await backupKey(pass,salt),te.encode(text));
+ return JSON.stringify({v:1,salt:b64e(salt),iv:b64e(iv),data:b64e(ct)});
+}
+async function decryptBackup(pass,env){
+ const e=JSON.parse(env);
+ const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64d(e.iv)},await backupKey(pass,b64d(e.salt)),b64d(e.data));
+ return td.decode(pt);
+}
+const canCrypto=()=>!!(window.crypto&&crypto.subtle);
+async function manualBackup(silent){
+ if(!S.backup.on||!S.backup.pass)return;
+ if(!canCrypto()){if(!silent)toast('This browser cannot do encrypted backup');return}
+ if(!silent)toast('Backing up…');
+ try{
+  const env=await encryptBackup(S.backup.pass,JSON.stringify(S));
+  const r=await fetch('/api/backup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:env})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error||('Backup failed ('+r.status+')'));
+  S.backup.last=Date.now();S.lastBackup=Date.now();save();
+  if(!silent)toast('Backed up');
+  if(view==='settings')render();
+ }catch(e){if(!silent)toast(e.message||'Backup failed')}
+}
+function autoBackup(){
+ if(!S.backup.on||!S.backup.pass)return;
+ if(Date.now()-(S.backup.last||0)<15*60*1000)return;
+ manualBackup(true);
+}
+async function showRestore(){
+ showModal('<h2>Restore from cloud</h2><div class="empty">Loading…</div>');
+ try{
+  const r=await fetch('/api/backup?action=list');const j=await r.json();
+  if(!r.ok)throw 0;
+  const items=(j.backups||[]).slice(0,10);
+  $('#modalc').innerHTML=`<h2>Restore from cloud</h2><p class="mut small" style="margin-top:0">Pick a backup. It is decrypted in this browser with your passphrase.</p>${items.length?items.map(b=>`<div class="block" style="align-items:center"><div style="flex:1">${new Date(b.ts).toLocaleString()}<div class="small mut">${Math.max(1,Math.round(b.size/1024))} KB</div></div><button class="btn sm" data-act="dorestore" data-ts="${b.ts}">Restore</button></div>`).join(''):'<div class="empty">No cloud backups yet</div>'}<div class="row" style="margin-top:12px"><button class="btn sec" data-act="closemodal">Close</button></div>`;
+ }catch(e){
+  $('#modalc').innerHTML='<h2>Restore from cloud</h2><div class="empty">Could not reach backup storage.</div><div class="row" style="margin-top:12px"><button class="btn sec" data-act="closemodal">Close</button></div>';
+ }
+}
+async function doRestore(ts){
+ if(!confirm('Replace all data on this device with the cloud backup from '+new Date(Number(ts)).toLocaleString()+'?'))return;
+ try{
+  const r=await fetch('/api/backup?action=get&ts='+encodeURIComponent(ts));const j=await r.json();
+  if(!r.ok||!j.data)throw new Error('download failed');
+  const d=JSON.parse(await decryptBackup(S.backup.pass,j.data));
+  if(!d||typeof d.entries!=='object'||!d.profile)throw new Error('bad backup');
+  const keep={on:S.backup.on,pass:S.backup.pass,last:Date.now()};
+  const b=blank();S=Object.assign(b,d,{profile:Object.assign(b.profile,d.profile||{}),ai:Object.assign(b.ai||{},d.ai||{})});
+  S.backup=keep;S.lastBackup=Date.now();save();hideModal();OB=null;CI=null;view='today';render();
+  toast('Restored from cloud');
+ }catch(e){toast(e.message==='bad backup'?'That backup is damaged':(e.message||'Restore failed'))}
+}
+function backupCard(){
+ const b=S.backup||{on:false},on=b.on,last=b.last?new Date(b.last).toLocaleString():null;
+ return `<div class="card"><h2>Automatic cloud backup</h2>
+ <p class="mut small" style="margin-top:0">Your data is encrypted in this browser with your passphrase before upload — the server only ever sees scrambled text. Backs up automatically after each check-in.</p>
+ <div class="row">${on?'<span class="pill p0">On</span>':'<span class="pill pn">Off</span>'}${last?`<span class="small mut">Last: ${esc(last)}</span>`:''}</div>
+ ${!on?`<label>Backup passphrase (min 8 characters — only you know this)</label><input type="password" id="bk-pass" placeholder="Choose a passphrase" style="max-width:320px" autocomplete="new-password">
+ <div class="row" style="margin-top:12px"><button class="btn" data-act="backupenable">Enable auto-backup</button></div>`
+ :`<div class="row" style="margin-top:12px"><button class="btn sec" data-act="backupnow">Backup now</button><button class="btn sec" data-act="backuprestore">Restore from cloud…</button><button class="btn bad" data-act="backupoff">Turn off</button></div>`}</div>`;
+}
+
 /* ---------- metrics & option lists ---------- */
 const M={
  sleep:{l:'Sleep',u:'h',t:'num',step:.5,max:16,bad:'abs'},
@@ -143,7 +215,7 @@ const HELPERS=['Workout','Walk / sunlight','Talk to a friend','Proper sleep','Mu
 const KINDS=['Class','Deadline','Study','Workout','Rest','Social','Other'];
 
 /* ---------- state ---------- */
-function blank(){return {v:1,onboarded:false,profile:{name:'',bed:'23:30',wake:'07:00',sleepGoal:7.5,tracked:['sleep','mood','energy','workout','study'],signs:[],triggers:[],helpers:[],extra:[],avoid:'',goals:'',support:''},entries:{},schedule:[],playbook:[],lastBackup:null,ai:{url:'http://localhost:11434',model:'',cloud:false},chat:[]}}
+function blank(){return {v:1,onboarded:false,profile:{name:'',bed:'23:30',wake:'07:00',sleepGoal:7.5,tracked:['sleep','mood','energy','workout','study'],signs:[],triggers:[],helpers:[],extra:[],avoid:'',goals:'',support:''},entries:{},schedule:[],playbook:[],lastBackup:null,ai:{url:'http://localhost:11434',model:'',cloud:false},chat:[],backup:{on:false,pass:'',last:0}}}
 let S=load();
 function load(){try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);const b=blank();return Object.assign(b,d,{profile:Object.assign(b.profile,d.profile||{})})}}catch(e){}return blank()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save – browser storage is blocked')}}
@@ -370,6 +442,7 @@ function cloudCard(){
  <p class="mut small" style="margin-top:0">Chat about your patterns with an AI, powered by Groq's free tier through your own server. The API key stays on the server, never in your browser. Only anonymized numbers, tags and patterns are sent — never your name — and Groq states it does not train on API data.</p>
  <div class="row"><button class="btn ${on?'sec':''}" data-act="cloudtoggle">${on?'Turn off':'Turn on'}</button>${on?'<span class="pill p0">On</span>':'<span class="pill pn">Off</span>'}</div>
  ${on?`<details style="margin-top:12px"><summary>See exactly what gets sent</summary><p class="small mut">The system prompt below plus your recent chat messages (up to 12). Nothing else leaves this app.</p><textarea readonly style="min-height:200px;font-size:12px">${esc(cloudSystem())}</textarea></details>
+ <div class="row" style="margin-top:10px"><label class="inl small"><input type="checkbox" data-jok="1"${S.ai.journalOk?' checked':''} style="width:auto;vertical-align:middle"> Let Coach read my journal notes</label></div>
  <p class="small mut">Needs a free Groq key saved as <code>GROQ_API_KEY</code> in the Vercel project's Environment Variables. If Coach says it isn't set up yet, that's the missing step.</p>`:''}</div>`;
 }
 
@@ -382,6 +455,7 @@ function vSettings(){
  <div class="row"><button class="btn" data-act="export">Download backup</button><button class="btn sec" data-act="import">Restore from backup</button></div><input type="file" id="imp" accept=".json" hidden>
  <h2 style="margin-top:20px">Move data to another device</h2><p class="mut small" style="margin-top:0">Phone and laptop keep separate data. To move it: press <b>Copy data</b> here, send the text to yourself (WhatsApp, Notes, email), then open Compass on the other device and press <b>Paste data</b>. This <b>replaces</b> the data on the device you paste into.</p>
  <div class="row"><button class="btn sec" data-act="copydata">Copy data</button><button class="btn sec" data-act="pastedata">Paste data</button></div></div>
+ ${backupCard()}
  <div class="card"><h2>Setup</h2><button class="btn sec" data-act="redo">Re-run setup questionnaire</button><p class="small mut">Keeps all your logs.</p></div>
  <div class="card"><h2>Danger zone</h2><button class="btn bad" data-act="wipe">Delete everything</button></div>`;
 }
@@ -444,8 +518,16 @@ async function ask(text){
  CH.busy=false;CH.ctl=null;if(!a.content&&S.chat.includes(a))S.chat.splice(S.chat.indexOf(a),1);
  S.chat=S.chat.slice(-40);save();if(view==='coach'){render();window.scrollTo(0,document.body.scrollHeight)}
 }
+function deepContext(){
+ const rows=lastDays(30).map(k=>{const e=S.entries[k];if(!e)return null;const vals=tracked().map(m=>`${M[m].l} ${val(k,m)==null?'-':val(k,m)}`).join(', ');return `${k} (${DAYN[parseKey(k).getDay()]}): ${vals}${(e.tags||[]).length?' | tags: '+e.tags.join(', '):''}`}).filter(Boolean).join('\n');
+ const notes=S.ai.journalOk?lastDays(14).map(k=>{const e=S.entries[k];return e&&e.note?`${k}: ${e.note.slice(0,300)}`:null}).filter(Boolean).join('\n'):'(not shared)';
+ const wk=[];for(let i=0;i<7;i++){const k=addDays(today(),i),bl=blocksFor(k);if(bl.length)wk.push(`${k} (${DAYN[parseKey(k).getDay()]}): ${bl.map(b=>`${b.start}-${b.end} ${b.title}`).join('; ')}`)}
+ const st=status(),ins=insights().slice(0,5).map(i=>'- '+i.t.replace(/<[^>]+>/g,'')).join('\n');
+ const pb=S.playbook.map(p=>`- ${p.then}${p.when?' (for '+p.when+')':''}${p.tried?`: helped ${p.helped}/${p.tried}`:' (not tried yet)'}`).join('\n');
+ return `TODAY: ${today()} (${DAYN[parseKey(today()).getDay()]})\nSTATUS vs own baseline: ${st.level<0?'not enough data yet':['on track','drifting','off track'][st.level]}${st.flags&&st.flags.length?' (changed: '+st.flags.map(f=>M[f.m].l+' recent '+f1(f.rm)+(f.bm!=null?' vs usual '+f1(f.bm):'')).join('; ')+')':''}\nLAST 30 DAYS (scales 1-10):\n${rows||'(no entries yet)'}\nJOURNAL NOTES (last 14 days):\n${notes||'(none)'}\nPATTERNS FOUND:\n${ins||'(none yet)'}\nPLAYBOOK:\n${pb||'(empty)'}\nWARNING SIGNS: ${S.profile.signs.join(', ')||'-'}\nTRIGGERS: ${S.profile.triggers.join(', ')||'-'}\nTHINGS THAT HELP: ${S.profile.helpers.join(', ')||'-'}\nTHINGS THAT DON'T WORK: ${S.profile.avoid||'-'}\nGOALS: ${S.profile.goals||'-'}\nSLEEP: usually ${S.profile.bed} to ${S.profile.wake}, feels best on ${S.profile.sleepGoal}h\nTHIS WEEK'S SCHEDULE:\n${wk.join('\n')||'nothing fixed'}`;
+}
 function cloudSystem(){
- return `You are Compass Coach, a warm, practical and honest personal coach. You are not a doctor and you never diagnose. Use only the data below and what the user tells you; if the data is thin, say so instead of guessing. Be concise (under 180 words unless asked for more), concrete, and suggest small next steps drawn from their own playbook and patterns. Do not just validate: kindly name real patterns, including uncomfortable ones. If the user mentions wanting to hurt themselves or not wanting to live, respond with care, encourage them to contact a trusted person and emergency services or Tele-MANAS (India, 14416) right away, and keep that the focus.\n\n${dataContext()}`;
+ return `You are Compass Coach, a warm, practical and honest personal coach. You are not a doctor and you never diagnose. Use only the data below and what the user tells you; if the data is thin, say so instead of guessing. Be concise (under 180 words unless asked for more), concrete, and suggest small next steps drawn from their own playbook and patterns. Do not just validate: kindly name real patterns, including uncomfortable ones. If the user mentions wanting to hurt themselves or not wanting to live, respond with care, encourage them to contact a trusted person and emergency services or Tele-MANAS (India, 14416) right away, and keep that the focus.\n\n${deepContext()}`;
 }
 async function askCloud(text){
  text=(text||'').trim();if(!text||CH.busy)return;
@@ -466,7 +548,7 @@ async function askCloud(text){
 }
 function vCoach(){
  const cloud=S.ai.cloud;
- const QP=['Why do I feel off lately?','Review my week','Plan my next 3 days','What actually works for me?'];
+ const QP=['Why do I feel off lately?','Review my week','Plan my next 3 days','What actually works for me?','Summarize my journal lately','Review my last 30 days'];
  const msgs=S.chat.map((m,i)=>`<div class="msg ${m.role==='user'?'u':'a'}"><span class="t">${esc(m.content)||(CH.busy&&i===S.chat.length-1?'…':'')}</span></div>`).join('');
  const sub=cloud
   ?'Ask anything about your patterns. Answered by a free cloud AI through your own server — it only ever sees anonymized numbers and tags, never your name.'
@@ -512,7 +594,7 @@ function weeklySummary(){
 function showSummary(){
  showModal(`<h2>Summary for any AI chat</h2><p class="mut small" style="margin-top:0">Copy this into Claude, ChatGPT, Gemini or any chatbot. It contains no name, only your numbers and tags. Read it before you paste.</p>
  <div class="chips" style="margin-bottom:10px">${SUMMODES.map(([k,l])=>`<button class="chip ${SUM.mode===k?'on':''}" data-sm="${k}">${l}</button>`).join('')}<button class="chip ${SUM.notes?'on':''}" data-smn="1">Include my recent notes</button></div>
- <textarea id="sumta" readonly>${esc(weeklySummary())}</textarea><div class="row" style="margin-top:12px"><button class="btn" data-act="copysum">Copy</button><button class="btn sec" data-act="closemodal">Close</button></div>`);
+ <textarea id="sumta" readonly>${esc(weeklySummary())}</textarea><div class="row" style="margin-top:12px"><button class="btn" data-act="copysum">Copy</button>${S.ai.cloud?'<button class="btn sec" data-act="coachanalyze">Analyze with Coach</button>':''}<button class="btn sec" data-act="closemodal">Close</button></div><div id="coachreply" style="margin-top:12px;white-space:pre-wrap"></div>`);
 }
 function showModal(h){$('#modalc').innerHTML=h;$('#modal').classList.add('on')}
 function hideModal(){$('#modal').classList.remove('on')}
@@ -545,16 +627,33 @@ document.addEventListener('click',e=>{
   for(const m in CI.vals)if(typeof CI.vals[m]==='number'&&!isNaN(CI.vals[m]))en[m]=CI.vals[m];
   en.tags=[...CI.tags];if(note)en.note=note;en.ts=Date.now();
   if(Object.keys(en).length<=2&&!note&&!en.tags.length){toast('Add at least one thing first');return}
-  S.entries[CI.date]=en;save();CI=null;toast('Saved');go('today');
+  S.entries[CI.date]=en;save();autoBackup();CI=null;toast('Saved');go('today');
  }
  else if(a==='rate'){const p=S.playbook.find(x=>x.id===t.dataset.id);if(p){p.tried++;if(t.dataset.h==='1')p.helped++;save();render();toast('Noted. Ranking updated')}}
  else if(a==='addplay'){const th=$('#pb-then').value.trim();if(!th){toast('What should the action be?');return}S.playbook.push({id:uid(),when:$('#pb-when').value,then:th,tried:0,helped:0});save();render()}
  else if(a==='delplay'){S.playbook=S.playbook.filter(p=>p.id!==t.dataset.id);save();render()}
+ else if(a==='backupenable'){
+  if(!canCrypto()){toast('This browser cannot do encrypted backup');return}
+  const p=($('#bk-pass')||{}).value||'';
+  if(p.length<8){toast('Passphrase needs at least 8 characters');return}
+  S.backup.on=true;S.backup.pass=p;save();render();toast('Auto-backup on');manualBackup(true);
+ }
+ else if(a==='backupoff'){S.backup.on=false;S.backup.pass='';save();render();toast('Auto-backup off')}
+ else if(a==='backupnow'){manualBackup(false)}
+ else if(a==='backuprestore'){showRestore()}
+ else if(a==='dorestore'){doRestore(t.dataset.ts)}
  else if(a==='export'){e.preventDefault();const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),u=URL.createObjectURL(b),l=document.createElement('a');l.href=u;l.download=`compass-backup-${today()}.json`;l.click();setTimeout(()=>URL.revokeObjectURL(u),1000);S.lastBackup=Date.now();save();toast('Backup downloaded')}
  else if(a==='import')$('#imp').click();
  else if(a==='redo'){startOB();S.onboarded=false;render()}
  else if(a==='wipe'){if(confirm('Delete ALL your data from this browser? This cannot be undone.')&&confirm('Really delete everything?')){localStorage.removeItem(KEY);S=blank();OB=null;view='today';render()}}
  else if(a==='aisummary'){SUM.mode=t.dataset.mode||'week';SUM.notes=false;showSummary()}
+ else if(a==='coachanalyze'){
+  t.disabled=true;const lbl=t.textContent;t.textContent='Analyzing…';
+  fetch('/api/coach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:cloudSystem(),messages:[{role:'user',content:weeklySummary()}],kind:'summary'})})
+  .then(r=>r.json().then(j=>({ok:r.ok,j})).catch(()=>({ok:false,j:{error:'Bad response'}})))
+  .then(({ok,j})=>{const el=$('#coachreply');if(el)el.innerHTML=ok?esc(j.reply||''):('<span style="color:var(--bad)">'+esc(j.error||'Failed')+'</span>');t.disabled=false;t.textContent=lbl;})
+  .catch(()=>{const el=$('#coachreply');if(el)el.textContent='Could not reach the AI.';t.disabled=false;t.textContent=lbl;});
+ }
  else if(a==='copysum'){const ta=$('#sumta');ta.select();try{navigator.clipboard.writeText(ta.value).then(()=>toast('Copied'),()=>{document.execCommand('copy');toast('Copied')})}catch(x){document.execCommand('copy');toast('Copied')}}
  else if(a==='closemodal')hideModal();
  else if(a==='aicheck')aiCheck();
@@ -588,6 +687,7 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
  const t=e.target;
  if(t.id==='ci-date'&&CI){CI.note=$('#ci-note').value;openCheckin(t.value||today());render()}
+ if(t.dataset.jok){S.ai.journalOk=t.checked;save();toast(t.checked?'Coach can read your journal notes':'Journal notes excluded from Coach');return}
  if(t.id==='imp'&&t.files[0]){
   const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.entries||!d.profile)throw 0;if(confirm('Replace current data with this backup?')){S=Object.assign(blank(),d);save();toast('Restored');render()}}catch(x){toast('That file does not look like a Compass backup')}};r.readAsText(t.files[0]);t.value='';
  }
