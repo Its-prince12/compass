@@ -1,6 +1,6 @@
 /* Compass service worker: makes the app installable and usable offline. */
 const CACHE = 'compass-v1';
-const ASSETS = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'];
+const ASSETS = ['./', 'index.html', 'manifest.json', 'icon.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
