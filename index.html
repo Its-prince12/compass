@@ -143,7 +143,7 @@ const HELPERS=['Workout','Walk / sunlight','Talk to a friend','Proper sleep','Mu
 const KINDS=['Class','Deadline','Study','Workout','Rest','Social','Other'];
 
 /* ---------- state ---------- */
-function blank(){return {v:1,onboarded:false,profile:{name:'',bed:'23:30',wake:'07:00',sleepGoal:7.5,tracked:['sleep','mood','energy','workout','study'],signs:[],triggers:[],helpers:[],extra:[],avoid:'',goals:'',support:''},entries:{},schedule:[],playbook:[],lastBackup:null,ai:{url:'http://localhost:11434',model:''},chat:[]}}
+function blank(){return {v:1,onboarded:false,profile:{name:'',bed:'23:30',wake:'07:00',sleepGoal:7.5,tracked:['sleep','mood','energy','workout','study'],signs:[],triggers:[],helpers:[],extra:[],avoid:'',goals:'',support:''},entries:{},schedule:[],playbook:[],lastBackup:null,ai:{url:'http://localhost:11434',model:'',cloud:false},chat:[]}}
 let S=load();
 function load(){try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);const b=blank();return Object.assign(b,d,{profile:Object.assign(b.profile,d.profile||{})})}}catch(e){}return blank()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save – browser storage is blocked')}}
@@ -364,9 +364,19 @@ function vPlaybook(){
  ${S.profile.avoid?`<div class="card"><h2>Things that don't work for me</h2><p style="margin:0;white-space:pre-wrap">${esc(S.profile.avoid)}</p></div>`:''}
  ${S.profile.goals?`<div class="card"><h2>My goals</h2><p style="margin:0;white-space:pre-wrap">${esc(S.profile.goals)}</p></div>`:''}`;
 }
+function cloudCard(){
+ const on=S.ai.cloud;
+ return `<div class="card"><h2>Cloud AI coach (free)</h2>
+ <p class="mut small" style="margin-top:0">Chat about your patterns with an AI, powered by Groq's free tier through your own server. The API key stays on the server, never in your browser. Only anonymized numbers, tags and patterns are sent — never your name — and Groq states it does not train on API data.</p>
+ <div class="row"><button class="btn ${on?'sec':''}" data-act="cloudtoggle">${on?'Turn off':'Turn on'}</button>${on?'<span class="pill p0">On</span>':'<span class="pill pn">Off</span>'}</div>
+ ${on?`<details style="margin-top:12px"><summary>See exactly what gets sent</summary><p class="small mut">The system prompt below plus your recent chat messages (up to 12). Nothing else leaves this app.</p><textarea readonly style="min-height:200px;font-size:12px">${esc(cloudSystem())}</textarea></details>
+ <p class="small mut">Needs a free Groq key saved as <code>GROQ_API_KEY</code> in the Vercel project's Environment Variables. If Coach says it isn't set up yet, that's the missing step.</p>`:''}</div>`;
+}
+
 function vSettings(){
  return `<h1>Settings</h1><p class="sub">Your data never leaves this browser unless you export it.</p>
  <div class="card"><h2>Tracked metrics</h2><div class="chips">${Object.keys(M).map(m=>`<button class="chip ${S.profile.tracked.includes(m)?'on':''}" data-chip="tracked" data-v="${m}">${M[m].l}</button>`).join('')}</div></div>
+ ${cloudCard()}
  <details class="card"${CH.aiMsg?' open':''}><summary>Advanced: built-in AI Coach (optional, needs Ollama on this computer)</summary><div style="margin-top:12px">${aiCard(true)}<p class="small mut">When a model is connected, a Coach tab appears in the menu. You don't need this: the paste-into-any-AI summaries work without it.</p></div></details>
  <div class="card"><h2>Backup</h2><p class="mut" style="margin-top:0">Browser data can be wiped by clearing site data. Download a backup regularly.${S.lastBackup?` Last: ${new Date(S.lastBackup).toLocaleDateString()}.`:''}</p>
  <div class="row"><button class="btn" data-act="export">Download backup</button><button class="btn sec" data-act="import">Restore from backup</button></div><input type="file" id="imp" accept=".json" hidden>
@@ -434,17 +444,42 @@ async function ask(text){
  CH.busy=false;CH.ctl=null;if(!a.content&&S.chat.includes(a))S.chat.splice(S.chat.indexOf(a),1);
  S.chat=S.chat.slice(-40);save();if(view==='coach'){render();window.scrollTo(0,document.body.scrollHeight)}
 }
+function cloudSystem(){
+ return `You are Compass Coach, a warm, practical and honest personal coach. You are not a doctor and you never diagnose. Use only the data below and what the user tells you; if the data is thin, say so instead of guessing. Be concise (under 180 words unless asked for more), concrete, and suggest small next steps drawn from their own playbook and patterns. Do not just validate: kindly name real patterns, including uncomfortable ones. If the user mentions wanting to hurt themselves or not wanting to live, respond with care, encourage them to contact a trusted person and emergency services or Tele-MANAS (India, 14416) right away, and keep that the focus.\n\n${dataContext()}`;
+}
+async function askCloud(text){
+ text=(text||'').trim();if(!text||CH.busy)return;
+ S.chat.push({role:'user',content:text});const a={role:'assistant',content:''};S.chat.push(a);
+ CH.busy=true;CH.err='';render();window.scrollTo(0,document.body.scrollHeight);
+ try{
+  const hist=S.chat.slice(0,-1).slice(-12).map(m=>({role:m.role,content:m.content}));
+  const r=await fetch('/api/coach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:cloudSystem(),messages:hist})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error||('Server error ('+r.status+')'));
+  a.content=(j.reply||'').trim();
+  if(!a.content)throw new Error('Empty reply from the AI');
+ }catch(e){
+  CH.err=e.message||"Couldn't reach the AI.";
+  if(S.chat.includes(a)&&!a.content)S.chat.splice(S.chat.indexOf(a),1);
+ }
+ CH.busy=false;S.chat=S.chat.slice(-40);save();if(view==='coach'){render();window.scrollTo(0,document.body.scrollHeight)}
+}
 function vCoach(){
+ const cloud=S.ai.cloud;
  const QP=['Why do I feel off lately?','Review my week','Plan my next 3 days','What actually works for me?'];
  const msgs=S.chat.map((m,i)=>`<div class="msg ${m.role==='user'?'u':'a'}"><span class="t">${esc(m.content)||(CH.busy&&i===S.chat.length-1?'…':'')}</span></div>`).join('');
- return `<h1>Coach</h1><p class="sub">Ask anything about your patterns. It reads your own data, runs on your laptop, and stays private.</p>
- ${(!S.ai.model||CH.err)?aiCard():''}
+ const sub=cloud
+  ?'Ask anything about your patterns. Answered by a free cloud AI through your own server — it only ever sees anonymized numbers and tags, never your name.'
+  :'Ask anything about your patterns. It reads your own data, runs on your laptop, and stays private.';
+ return `<h1>Coach</h1><p class="sub">${sub}</p>
+ ${!cloud&&(!S.ai.model||CH.err)?aiCard():''}
  ${CH.err?`<div class="card note" style="border-left-color:var(--bad)">${esc(CH.err)}</div>`:''}
  <div class="card" id="chatbox">${msgs||'<div class="empty">Nothing yet. Pick a question below or type your own.</div>'}</div>
  <div class="chips" style="margin-bottom:12px">${QP.map(q=>`<button class="chip" data-act="qp" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
  <div class="row" style="flex-wrap:nowrap;align-items:flex-end"><textarea id="chat-in" placeholder="What's going on?" style="min-height:48px;height:48px"></textarea>${CH.busy?'<button class="btn bad" data-act="stopchat">Stop</button>':'<button class="btn" data-act="send">Send</button>'}</div>
- <div class="row sp small mut" style="margin-top:12px"><span>AI can be wrong and isn't medical advice.${S.ai.model?` Model: ${esc(S.ai.model)}`:''}</span>${S.chat.length?'<a href="#" data-act="clearchat" style="color:var(--mut)">Clear chat</a>':''}</div>`;
+ <div class="row sp small mut" style="margin-top:12px"><span>AI can be wrong and isn't medical advice.${cloud?' Powered by Groq\u2019s free tier.':S.ai.model?` Model: ${esc(S.ai.model)}`:''}</span>${S.chat.length?'<a href="#" data-act="clearchat" style="color:var(--mut)">Clear chat</a>':''}</div>`;
 }
+
 
 /* ---------- render ---------- */
 const NAV=[['today','◉','Today'],['checkin','✎','Log'],['patterns','∿','Patterns'],['reset','↺','Reset'],['coach','✦','Coach'],['schedule','▦','Plan'],['playbook','★','Playbook'],['settings','⚙','Prefs']];
@@ -452,8 +487,8 @@ function render(){
  const app=$('#app'),nav=$('#nav');
  if(!S.onboarded){if(!OB)startOB();nav.style.display='none';app.innerHTML=renderOB();return}
  nav.style.display='';
- if(view==='coach'&&!S.ai.model&&!CH.models.length){view='settings'}
- nav.innerHTML=`<div class="brand">Com<span>pass</span></div>`+NAV.filter(n=>n[0]!=='coach'||S.ai.model).map(([k,i,l])=>`<button class="${view===k?'on':''}" data-go="${k}"><i>${i}</i>${l}</button>`).join('');
+ const coachOn=()=>S.ai.cloud||S.ai.model||CH.models.length;if(view==='coach'&&!coachOn()){view='settings'}
+ nav.innerHTML=`<div class="brand">Com<span>pass</span></div>`+NAV.filter(n=>n[0]!=='coach'||coachOn()).map(([k,i,l])=>`<button class="${view===k?'on':''}" data-go="${k}"><i>${i}</i>${l}</button>`).join('');
  const V={today:vToday,checkin:vCheckin,patterns:vPatterns,reset:vReset,coach:vCoach,schedule:vSchedule,playbook:vPlaybook,settings:vSettings};
  app.innerHTML=V[view]();
 }
@@ -523,8 +558,9 @@ document.addEventListener('click',e=>{
  else if(a==='copysum'){const ta=$('#sumta');ta.select();try{navigator.clipboard.writeText(ta.value).then(()=>toast('Copied'),()=>{document.execCommand('copy');toast('Copied')})}catch(x){document.execCommand('copy');toast('Copied')}}
  else if(a==='closemodal')hideModal();
  else if(a==='aicheck')aiCheck();
- else if(a==='send'){const i=$('#chat-in');if(i&&i.value.trim())ask(i.value)}
- else if(a==='qp')ask(t.dataset.q);
+ else if(a==='cloudtoggle'){S.ai.cloud=!S.ai.cloud;save();render();toast(S.ai.cloud?'Cloud AI on':'Cloud AI off')}
+ else if(a==='send'){const i=$('#chat-in');if(i&&i.value.trim())(S.ai.cloud?askCloud:ask)(i.value)}
+ else if(a==='qp')(S.ai.cloud?askCloud:ask)(t.dataset.q);
  else if(a==='stopchat'){if(CH.ctl)CH.ctl.abort()}
  else if(a==='clearchat'){e.preventDefault();if(confirm('Clear this conversation?')){S.chat=[];CH.err='';save();render()}}
  else if(a==='copydata'){
