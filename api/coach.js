@@ -22,19 +22,22 @@ export default async function handler(req, res) {
   } catch {
     return res.status(400).json({ error: 'Invalid JSON' });
   }
+  const isSummary = body && body.kind === 'summary';
   const system = clamp(body && body.system, 6000);
   let messages = Array.isArray(body && body.messages) ? body.messages : [];
+  const MSG_CAP = isSummary ? 12000 : 2000;
+  const MAX_MSG = isSummary ? 2 : 12;
   messages = messages
     .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
-    .slice(-12)
-    .map(m => ({ role: m.role, content: clamp(m.content, 2000) }));
+    .slice(-MAX_MSG)
+    .map(m => ({ role: m.role, content: clamp(m.content, MSG_CAP) }));
   if (!messages.length || !system) {
     return res.status(400).json({ error: 'Missing messages or context' });
   }
 
   const payload = {
     messages: [{ role: 'system', content: system }, ...messages],
-    max_tokens: 600,
+    max_tokens: isSummary ? 800 : 600,
     temperature: 0.7
   };
 
