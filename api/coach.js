@@ -2,7 +2,7 @@
    The GROQ_API_KEY lives in a Vercel environment variable and never reaches
    the browser. Only the anonymized data summary the app builds (numbers, tags,
    patterns - no name, no journal unless the user opts in) is forwarded. */
-const MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+const MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
 const clamp = (s, n) => String(s == null ? '' : s).slice(0, n);
 
 export default async function handler(req, res) {
@@ -46,9 +46,9 @@ export default async function handler(req, res) {
         headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...payload, model })
       });
-      if (r.status === 429 || r.status === 529 || r.status >= 500) {
-        lastErr = 'free tier is busy right now';
-        continue; // try the fallback model
+      if (r.status === 404 || r.status === 429 || r.status === 529 || r.status >= 500) {
+        lastErr = r.status === 404 ? 'that AI model is not available right now' : 'free tier is busy right now';
+        continue; // try the next model
       }
       if (!r.ok) {
         lastErr = 'Groq returned an error (' + r.status + ')';
