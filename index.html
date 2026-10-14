@@ -90,6 +90,8 @@ label.inl{display:inline;font-weight:400}
 details summary{cursor:pointer;color:var(--acc);font-weight:600}
 details ol{padding-left:20px;margin:10px 0 0}
 code{background:var(--card2);padding:1px 6px;border-radius:6px;font-size:13px}
+.fab{position:fixed;right:18px;bottom:18px;z-index:40;width:56px;height:56px;border-radius:50%;background:var(--acc);color:#05241d;font-size:24px;border:0;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);display:none;align-items:center;justify-content:center}
+.fab:hover{filter:brightness(1.08)}
 @media(max-width:760px){
  #shell{display:block}
  #nav{position:fixed;bottom:0;left:0;right:0;top:auto;width:auto;height:auto;flex-direction:row;padding:6px;border-right:0;border-top:1px solid var(--line);background:var(--bg);z-index:30;gap:0}
@@ -97,6 +99,7 @@ code{background:var(--card2);padding:1px 6px;border-radius:6px;font-size:13px}
  #nav button{flex:1;flex-direction:column;gap:2px;padding:6px 0;font-size:10px;text-align:center;justify-content:center;min-width:0}
  main{padding-top:20px}
  .scale button{padding:11px 0}
+ .fab{bottom:78px;right:14px;width:52px;height:52px}
 }
 </style>
 </head>
@@ -450,7 +453,6 @@ function vSettings(){
  return `<h1>Settings</h1><p class="sub">Your data never leaves this browser unless you export it.</p>
  <div class="card"><h2>Tracked metrics</h2><div class="chips">${Object.keys(M).map(m=>`<button class="chip ${S.profile.tracked.includes(m)?'on':''}" data-chip="tracked" data-v="${m}">${M[m].l}</button>`).join('')}</div></div>
  ${cloudCard()}
- <details class="card"${CH.aiMsg?' open':''}><summary>Advanced: built-in AI Coach (optional, needs Ollama on this computer)</summary><div style="margin-top:12px">${aiCard(true)}<p class="small mut">When a model is connected, a Coach tab appears in the menu. You don't need this: the paste-into-any-AI summaries work without it.</p></div></details>
  <div class="card"><h2>Backup</h2><p class="mut" style="margin-top:0">Browser data can be wiped by clearing site data. Download a backup regularly.${S.lastBackup?` Last: ${new Date(S.lastBackup).toLocaleDateString()}.`:''}</p>
  <div class="row"><button class="btn" data-act="export">Download backup</button><button class="btn sec" data-act="import">Restore from backup</button></div><input type="file" id="imp" accept=".json" hidden>
  <h2 style="margin-top:20px">Move data to another device</h2><p class="mut small" style="margin-top:0">Phone and laptop keep separate data. To move it: press <b>Copy data</b> here, send the text to yourself (WhatsApp, Notes, email), then open Compass on the other device and press <b>Paste data</b>. This <b>replaces</b> the data on the device you paste into.</p>
@@ -554,7 +556,7 @@ function vCoach(){
   ?'Ask anything about your patterns. Answered by a free cloud AI through your own server — it only ever sees anonymized numbers and tags, never your name.'
   :'Ask anything about your patterns. It reads your own data, runs on your laptop, and stays private.';
  return `<h1>Coach</h1><p class="sub">${sub}</p>
- ${!cloud&&(!S.ai.model||CH.err)?aiCard():''}
+ ${!cloud?'<div class="card"><p class="mut" style="margin-top:0">Turn on <b>Cloud AI coach</b> in Prefs to chat here.</p><div class="row"><button class="btn sec" data-act="goprefs">Open Prefs</button></div></div>':''}
  ${CH.err?`<div class="card note" style="border-left-color:var(--bad)">${esc(CH.err)}</div>`:''}
  <div class="card" id="chatbox">${msgs||'<div class="empty">Nothing yet. Pick a question below or type your own.</div>'}</div>
  <div class="chips" style="margin-bottom:12px">${QP.map(q=>`<button class="chip" data-act="qp" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
@@ -573,6 +575,12 @@ function render(){
  nav.innerHTML=`<div class="brand">Com<span>pass</span></div>`+NAV.filter(n=>n[0]!=='coach'||coachOn()).map(([k,i,l])=>`<button class="${view===k?'on':''}" data-go="${k}"><i>${i}</i>${l}</button>`).join('');
  const V={today:vToday,checkin:vCheckin,patterns:vPatterns,reset:vReset,coach:vCoach,schedule:vSchedule,playbook:vPlaybook,settings:vSettings};
  app.innerHTML=V[view]();
+ let fab=document.getElementById('coachfab');
+ const showFab=S.onboarded&&S.ai.cloud&&view!=='coach';
+ if(showFab){
+  if(!fab){fab=document.createElement('button');fab.id='coachfab';fab.className='fab';fab.innerHTML='\u2726';fab.title='Ask the Coach';fab.setAttribute('aria-label','Ask the Coach');fab.addEventListener('click',()=>go('coach'));document.body.appendChild(fab)}
+  fab.style.display='flex';
+ }else if(fab){fab.style.display='none'}
 }
 function go(v){view=v;if(v==='checkin')openCheckin(today());render();window.scrollTo(0,0)}
 
@@ -642,6 +650,7 @@ document.addEventListener('click',e=>{
  else if(a==='backupnow'){manualBackup(false)}
  else if(a==='backuprestore'){showRestore()}
  else if(a==='dorestore'){doRestore(t.dataset.ts)}
+ else if(a==='goprefs'){go('settings')}
  else if(a==='export'){e.preventDefault();const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),u=URL.createObjectURL(b),l=document.createElement('a');l.href=u;l.download=`compass-backup-${today()}.json`;l.click();setTimeout(()=>URL.revokeObjectURL(u),1000);S.lastBackup=Date.now();save();toast('Backup downloaded')}
  else if(a==='import')$('#imp').click();
  else if(a==='redo'){startOB();S.onboarded=false;render()}
