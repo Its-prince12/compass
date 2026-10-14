@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Compass</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Compass">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#0f1115;--card:#171a21;--card2:#1d212a;--line:#272c38;--txt:#e8eaf0;--mut:#8b93a7;--acc:#6ee7c8;--acc2:#8b7cff;--warn:#fbbf24;--bad:#f87171;--good:#34d399;--r:14px}
+@media (prefers-color-scheme:light){:root{--bg:#f5f6fa;--card:#fff;--card2:#f0f2f7;--line:#dfe3ec;--txt:#171a21;--mut:#667089;--acc:#0d9e7f;--acc2:#6552e0;--warn:#b7791f;--bad:#d64545;--good:#1f9d6b}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--txt);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+#shell{display:flex;min-height:100vh}
+#nav{width:200px;flex:none;padding:20px 12px;border-right:1px solid var(--line);position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px}
+#nav .brand{font-weight:700;font-size:20px;padding:4px 12px 16px;letter-spacing:.3px}
+#nav .brand span{color:var(--acc)}
+#nav button{all:unset;cursor:pointer;padding:10px 12px;border-radius:10px;color:var(--mut);display:flex;gap:10px;align-items:center;font-weight:500}
+#nav button:hover{background:var(--card)}
+#nav button.on{background:var(--card2);color:var(--txt)}
+#nav button i{font-style:normal;width:20px;text-align:center}
+main{flex:1;min-width:0;padding:28px clamp(16px,4vw,44px) 80px;max-width:980px;margin:0 auto;width:100%}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:17px;margin:0 0 10px}
+.sub{color:var(--mut);margin:0 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:16px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sp{justify-content:space-between}
+.mut{color:var(--mut)}
+.small{font-size:13px}
+.btn{all:unset;cursor:pointer;background:var(--acc);color:#05241d;font-weight:600;padding:10px 16px;border-radius:10px;text-align:center}
+.btn:hover{filter:brightness(1.08)}
+.btn.sec{background:var(--card2);color:var(--txt);border:1px solid var(--line)}
+.btn.bad{background:transparent;color:var(--bad);border:1px solid var(--bad)}
+.btn.sm{padding:6px 11px;font-size:13px}
+input,select,textarea{background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;width:100%}
+textarea{min-height:84px;resize:vertical}
+label{display:block;font-weight:600;margin:14px 0 6px}
+label.inl{display:inline;font-weight:400}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{all:unset;cursor:pointer;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card2);font-size:14px}
+.chip.on{background:var(--acc2);border-color:var(--acc2);color:#fff}
+.scale{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
+.scale button{all:unset;cursor:pointer;text-align:center;padding:9px 0;border-radius:8px;background:var(--card2);border:1px solid var(--line);font-weight:600}
+.scale button.on{background:var(--acc);color:#05241d;border-color:var(--acc)}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600}
+.p0{background:rgba(52,211,153,.15);color:var(--good)}
+.p1{background:rgba(251,191,36,.15);color:var(--warn)}
+.p2{background:rgba(248,113,113,.15);color:var(--bad)}
+.pn{background:var(--card2);color:var(--mut)}
+.chart{width:100%;height:auto;display:block}
+.chart .g{stroke:var(--line);stroke-width:1}
+.chart .mu{stroke:var(--mut);stroke-dasharray:4 4;stroke-width:1;opacity:.7}
+.chart .ln{fill:none;stroke:var(--acc);stroke-width:2;stroke-linejoin:round}
+.chart circle{fill:var(--acc)}
+.chart .ax{fill:var(--mut);font-size:10px}
+.empty{color:var(--mut);padding:24px 0;text-align:center}
+.block{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.block:last-child{border:0}
+.time{min-width:96px;color:var(--mut);font-variant-numeric:tabular-nums}
+.kind{font-size:12px;padding:2px 8px;border-radius:6px;background:var(--card2);color:var(--mut)}
+.dots{display:flex;gap:6px;align-items:flex-end;height:46px}
+.dots div{flex:1;background:var(--acc2);border-radius:4px 4px 0 0;min-height:3px;opacity:.9}
+.dots div.n{background:var(--line)}
+.insight{padding:12px 0;border-bottom:1px solid var(--line)}
+.insight:last-child{border:0}
+.bar{height:8px;border-radius:99px;background:var(--card2);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--acc)}
+.steps{display:flex;gap:6px;margin-bottom:22px}
+.steps i{flex:1;height:4px;border-radius:4px;background:var(--line)}
+.steps i.on{background:var(--acc)}
+.ob{max-width:620px;margin:0 auto}
+.note{border-left:3px solid var(--acc2);padding:8px 14px;background:var(--card2);border-radius:0 10px 10px 0;color:var(--mut);font-size:14px}
+#toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--txt);color:var(--bg);padding:10px 18px;border-radius:99px;opacity:0;pointer-events:none;transition:.2s;z-index:50;font-weight:600}
+#toast.on{opacity:1}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:16px;z-index:40}
+#modal.on{display:flex}
+#modal .card{max-width:640px;width:100%;max-height:88vh;overflow:auto;margin:0}
+#modal textarea{min-height:260px;font-size:13px}
+.msg{padding:10px 14px;border-radius:14px;margin:8px 0;max-width:92%;white-space:pre-wrap;word-wrap:break-word}
+.msg.u{background:var(--acc2);color:#fff;margin-left:auto}
+.msg.a{background:var(--card2)}
+details summary{cursor:pointer;color:var(--acc);font-weight:600}
+details ol{padding-left:20px;margin:10px 0 0}
+code{background:var(--card2);padding:1px 6px;border-radius:6px;font-size:13px}
+@media(max-width:760px){
+ #shell{display:block}
+ #nav{position:fixed;bottom:0;left:0;right:0;top:auto;width:auto;height:auto;flex-direction:row;padding:6px;border-right:0;border-top:1px solid var(--line);background:var(--bg);z-index:30;gap:0}
+ #nav .brand{display:none}
+ #nav button{flex:1;flex-direction:column;gap:2px;padding:6px 0;font-size:10px;text-align:center;justify-content:center;min-width:0}
+ main{padding-top:20px}
+ .scale button{padding:11px 0}
+}
+</style>
+</head>
+<body>
+<div id="shell"><nav id="nav"></nav><main id="app"></main></div>
+<div id="toast"></div>
+<div id="modal"><div class="card" id="modalc"></div></div>
+
+<script>
+/* ---------- helpers ---------- */
+const KEY='compass.v1';
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const key=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today=()=>key(new Date());
+const parseKey=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d)};
+const addDays=(k,n)=>{const d=parseKey(k);d.setDate(d.getDate()+n);return key(d)};
+const shortDate=k=>parseKey(k).toLocaleDateString(undefined,{day:'numeric',month:'short'});
+const DAYN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+const sd=a=>{if(a.length<2)return 0;const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1))};
+const median=a=>{const s=[...a].sort((x,y)=>x-y),n=s.length;return n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2};
+const f1=x=>x==null?'–':String(Math.round(x*10)/10);
+const uid=()=>Math.random().toString(36).slice(2,9);
+function pearson(a,b){const n=a.length;if(n<3)return 0;const ma=mean(a),mb=mean(b);let nu=0,da=0,db=0;for(let i=0;i<n;i++){const x=a[i]-ma,y=b[i]-mb;nu+=x*y;da+=x*x;db+=y*y}return da&&db?nu/Math.sqrt(da*db):0}
+
+/* ---------- metrics & option lists ---------- */
+const M={
+ sleep:{l:'Sleep',u:'h',t:'num',step:.5,max:16,bad:'abs'},
+ mood:{l:'Mood',t:'scale',bad:'low'},
+ energy:{l:'Energy',t:'scale',bad:'low'},
+ stress:{l:'Stress',t:'scale',bad:'high'},
+ workout:{l:'Workout',u:'min',t:'num',step:5,max:300,bad:'low'},
+ study:{l:'Study / deep work',u:'h',t:'num',step:.5,max:16,bad:'low'},
+ screen:{l:'Screen time',u:'h',t:'num',step:.5,max:20,bad:'high'},
+ social:{l:'Time with people',u:'h',t:'num',step:.5,max:16,bad:'low'},
+ water:{l:'Water',u:'glasses',t:'num',step:1,max:20,bad:'low'},
+ caffeine:{l:'Caffeine',u:'cups',t:'num',step:1,max:10,bad:'high'}
+};
+const SIGNS=['Low mood','Anxious / on edge','Procrastinating','Oversleeping',"Can't sleep",'Isolating from people','Skipping workouts','Irritable','Doomscrolling','Skipping meals / junk eating','Brain fog','Losing interest in things'];
+const TRIGGERS=['Exams / deadlines','Poor sleep','Conflict with someone','Comparing myself to others','Overworking','Too long alone','Skipped workouts','Too much screen time','Unstructured day','Feeling behind in studies','Money / future worries'];
+const HELPERS=['Workout','Walk / sunlight','Talk to a friend','Proper sleep','Music','Tidy my space','Journaling','One small win task','Breathing / meditation','Cook / eat well','Fun break (gaming etc.)','Time outdoors'];
+const KINDS=['Class','Deadline','Study','Workout','Rest','Social','Other'];
+
+/* ---------- state ---------- */
+function blank(){return {v:1,onboarded:false,profile:{name:'',bed:'23:30',wake:'07:00',sleepGoal:7.5,tracked:['sleep','mood','energy','workout','study'],signs:[],triggers:[],helpers:[],extra:[],avoid:'',goals:'',support:''},entries:{},schedule:[],playbook:[],lastBackup:null,ai:{url:'http://localhost:11434',model:''},chat:[]}}
+let S=load();
+function load(){try{const r=localStorage.getItem(KEY);if(r){const d=JSON.parse(r);const b=blank();return Object.assign(b,d,{profile:Object.assign(b.profile,d.profile||{})})}}catch(e){}return blank()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save – browser storage is blocked')}}
+let view='today',OB=null,CI=null,PW=30;
+
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),2200)}
+const val=(k,m)=>{const v=S.entries[k]&&S.entries[k][m];return typeof v==='number'?v:null};
+const tracked=()=>S.profile.tracked.filter(m=>M[m]);
+const allTags=()=>[...new Set([...S.profile.signs,...S.profile.triggers,...S.profile.helpers,...S.profile.extra])];
+
+/* ---------- analysis ---------- */
+function lastDays(n){const t=today(),o=[];for(let i=n-1;i>=0;i--)o.push(addDays(t,-i));return o}
+function pairs(xm,ym,lag,span=90){const out=[];for(const k of lastDays(span)){const y=val(k,ym),x=val(addDays(k,-lag),xm);if(x!=null&&y!=null)out.push([x,y])}return out}
+function insights(){
+ const out=[];const tr=tracked();const outc=['mood','energy','stress'].filter(m=>tr.includes(m));
+ for(const y of outc)for(const x of tr){if(x===y)continue;
+  for(const lag of [0,1]){
+   const P=pairs(x,y,lag);if(P.length<8)continue;
+   const xs=P.map(p=>p[0]),ys=P.map(p=>p[1]);const r=pearson(xs,ys);if(Math.abs(r)<.35)continue;
+   const med=median(xs);const hi=P.filter(p=>p[0]>med).map(p=>p[1]),lo=P.filter(p=>p[0]<=med).map(p=>p[1]);
+   const dir=r>0?'higher':'lower';
+   let t=lag?`Your ${M[y].l.toLowerCase()} tends to be <b>${dir}</b> the day after a higher ${M[x].l.toLowerCase()}.`:`When your ${M[x].l.toLowerCase()} is higher, your ${M[y].l.toLowerCase()} tends to be <b>${dir}</b>.`;
+   if(hi.length>=3&&lo.length>=3)t+=` <span class="mut">(${M[x].l} above ${f1(med)}${M[x].u||''}: ${f1(mean(hi))} vs ${f1(mean(lo))} otherwise)</span>`;
+   out.push({s:Math.abs(r),t,n:P.length});
+  }}
+ const days=lastDays(90).filter(k=>S.entries[k]);
+ if(tr.includes('mood')){
+  for(const tag of allTags()){
+   for(const lag of (S.profile.helpers.includes(tag)?[0,1]:[0])){
+    const A=[],B=[];
+    for(const k of days){const k2=addDays(k,lag);const y=val(k2,'mood');if(y==null)continue;((S.entries[k].tags||[]).includes(tag)?A:B).push(y)}
+    if(A.length<3||B.length<3)continue;const d=mean(A)-mean(B);if(Math.abs(d)<1)continue;
+    const when=lag?'the day after':'on days tagged';
+    out.push({s:Math.abs(d)/4,t:`Mood ${when} <b>${esc(tag)}</b> averages ${f1(mean(A))} vs ${f1(mean(B))} without it (${d>0?'better':'worse'}).`,n:A.length+B.length});
+   }}}
+ return out.sort((a,b)=>b.s-a.s).slice(0,8);
+}
+function status(){
+ const keys=Object.keys(S.entries).sort(),t=today();
+ if(keys.length<5)return {level:-1,msg:'Log a few more days (about 5+, ideally 2 weeks) and Compass learns your baseline.',flags:[]};
+ const rec=keys.filter(k=>k>addDays(t,-4)&&k<=t),base=keys.filter(k=>k<=addDays(t,-4)&&k>addDays(t,-60));
+ if(!rec.length)return {level:-1,msg:'No check-ins in the last 3 days, so I can\'t tell how you\'re doing. Log one now.',flags:[]};
+ const flags=[];
+ for(const m of tracked()){
+  const R=rec.map(k=>val(k,m)).filter(v=>v!=null),B=base.map(k=>val(k,m)).filter(v=>v!=null);
+  if(!R.length||B.length<7)continue;
+  const bm=mean(B),rm=mean(R),s=Math.max(sd(B),M[m].t==='scale'?.7:Math.max(.25*bm,.5)),z=(rm-bm)/s,b=M[m].bad;
+  if((b==='low'&&z<=-1)||(b==='high'&&z>=1)||(b==='abs'&&Math.abs(z)>=1))flags.push({m,rm,bm,z});
+ }
+ const rmood=rec.map(k=>val(k,'mood')).filter(v=>v!=null);
+ if(rmood.length&&mean(rmood)<=3.5&&!flags.find(f=>f.m==='mood'))flags.push({m:'mood',rm:mean(rmood),bm:null,z:null});
+ let level=flags.length>=2?2:flags.length;
+ const last=S.entries[rec[rec.length-1]]||{};
+ const signs=(last.tags||[]).filter(x=>S.profile.signs.includes(x));
+ if(signs.length>=3&&level<1)level=1;
+ return {level,flags,signs,rec:rec.length};
+}
+function rankedActions(){
+ const t=today(),e=S.entries[t]||S.entries[addDays(t,-1)]||{},ctx=new Set(e.tags||[]);
+ return S.playbook.map(p=>({...p,score:(p.helped+1)/(p.tried+2)+(p.when&&ctx.has(p.when)?.3:0)})).sort((a,b)=>b.score-a.score);
+}
+
+/* ---------- charts ---------- */
+function chart(m,days){
+ const t=today(),pts=[];for(let i=days-1;i>=0;i--){const k=addDays(t,-i);pts.push({k,v:val(k,m)})}
+ const vs=pts.map(p=>p.v).filter(v=>v!=null);
+ if(vs.length<2)return '<div class="empty">Not enough data yet</div>';
+ const W=600,H=150,pl=28,pr=8,pt=10,pb=18;
+ const sc=M[m].t==='scale';const lo=sc?1:0,hi=sc?10:Math.max(...vs,1)*1.15;
+ const X=i=>pl+(W-pl-pr)*(i/(pts.length-1)),Y=v=>pt+(H-pt-pb)*(1-(v-lo)/(hi-lo));
+ let path='',open=false;
+ pts.forEach((p,i)=>{if(p.v==null){open=false;return}path+=(open?'L':'M')+X(i).toFixed(1)+' '+Y(p.v).toFixed(1)+' ';open=true});
+ const dots=pts.map((p,i)=>p.v==null?'':`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="2.6"/>`).join('');
+ const grid=[0,.5,1].map(f=>{const v=lo+(hi-lo)*f;return `<line x1="${pl}" x2="${W-pr}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="g"/><text x="${pl-4}" y="${(Y(v)+3).toFixed(1)}" class="ax" text-anchor="end">${Math.round(v*10)/10}</text>`}).join('');
+ const mu=mean(vs);
+ return `<svg viewBox="0 0 ${W} ${H}" class="chart">${grid}<line x1="${pl}" x2="${W-pr}" y1="${Y(mu).toFixed(1)}" y2="${Y(mu).toFixed(1)}" class="mu"/><path d="${path}" class="ln"/>${dots}<text x="${pl}" y="${H-3}" class="ax">${shortDate(pts[0].k)}</text><text x="${W-pr}" y="${H-3}" class="ax" text-anchor="end">today</text></svg>`;
+}
+
+/* ---------- schedule ---------- */
+function blocksFor(k){const dow=parseKey(k).getDay();return S.schedule.filter(b=>b.date?b.date===k:b.day===dow).sort((a,b)=>a.start.localeCompare(b.start))}
+function schedForm(){
+ return `<div id="sf"><div class="grid" style="gap:10px">
+ <div><label>What</label><input id="sf-title" placeholder="e.g. DBMS class, IITM quiz, Gym"></div>
+ <div><label>Type</label><select id="sf-kind">${KINDS.map(k=>`<option>${k}</option>`).join('')}</select></div></div>
+ <div class="grid" style="gap:10px">
+ <div><label>Repeats on</label><select id="sf-day"><option value="1">Mon</option><option value="2">Tue</option><option value="3">Wed</option><option value="4">Thu</option><option value="5">Fri</option><option value="6">Sat</option><option value="0">Sun</option><option value="wk">Weekdays</option><option value="all">Every day</option></select></div>
+ <div><label>…or one date instead</label><input id="sf-date" type="date"></div></div>
+ <div class="grid" style="gap:10px"><div><label>Start</label><input id="sf-start" type="time" value="09:00"></div><div><label>End</label><input id="sf-end" type="time" value="10:00"></div></div>
+ <div style="margin-top:14px"><button class="btn sec" data-act="addblock">+ Add to schedule</button></div></div>`;
+}
+function addBlock(){
+ const title=$('#sf-title').value.trim();if(!title){toast('Give it a name');return}
+ const kind=$('#sf-kind').value,date=$('#sf-date').value,dsel=$('#sf-day').value,start=$('#sf-start').value||'09:00',end=$('#sf-end').value||start;
+ const target=S.onboarded?S.schedule:OB.schedule;
+ if(date)target.push({id:uid(),title,kind,date,start,end});
+ else{const days=dsel==='wk'?[1,2,3,4,5]:dsel==='all'?[0,1,2,3,4,5,6]:[Number(dsel)];days.forEach(d=>target.push({id:uid(),title,kind,day:d,start,end}))}
+ if(S.onboarded)save();
+ $('#sf-title').value='';render();toast('Added');
+}
+function blockRow(b,del){return `<div class="block"><div class="time">${esc(b.start)}–${esc(b.end)}</div><div style="flex:1">${esc(b.title)} <span class="kind">${esc(b.kind)}</span>${b.date?` <span class="kind">${shortDate(b.date)}</span>`:''}</div>${del?`<button class="btn sm sec" data-act="delblock" data-id="${b.id}">✕</button>`:''}</div>`}
+
+/* ---------- onboarding ---------- */
+const OBN=8;
+function startOB(){const p=S.profile;OB={step:0,name:p.name,bed:p.bed,wake:p.wake,sleepGoal:p.sleepGoal,tracked:[...p.tracked],signs:[...p.signs],triggers:[...p.triggers],helpers:[...p.helpers],signsO:'',trigO:'',helpO:'',avoid:p.avoid,goals:p.goals,support:p.support,schedule:S.schedule.map(x=>({...x}))}}
+function chips(group,list,selected){return `<div class="chips">${list.map(x=>`<button class="chip ${selected.includes(x)?'on':''}" data-chip="${group}" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}
+function renderOB(){
+ const o=OB,s=o.step;let h='';
+ const bar=`<div class="steps">${Array.from({length:OBN},(_,i)=>`<i class="${i<=s?'on':''}"></i>`).join('')}</div>`;
+ const nav=`<div class="row sp" style="margin-top:26px">${s>0?'<button class="btn sec" data-act="obback">Back</button>':'<span></span>'}<button class="btn" data-act="obnext">${s===OBN-1?'Finish setup':'Next'}</button></div>`;
+ if(s===0)h=`<h1>Let's set up Compass</h1><p class="sub">A few questions so it fits <i>you</i> from day one. Takes about 5 minutes. Everything stays on this device.</p>
+  <label>What should I call you?</label><input data-ob="name" value="${esc(o.name)}" placeholder="Your name">
+  <div class="note" style="margin-top:22px">Compass is a self-awareness tool: it shows your own patterns and what has worked for you. It isn't a diagnosis or a replacement for professional help.</div>`;
+ if(s===1)h=`<h1>Your sleep</h1><p class="sub">Sleep is usually the first domino. This sets your baseline.</p>
+  <div class="grid" style="gap:10px"><div><label>Usual bedtime</label><input type="time" data-ob="bed" value="${o.bed}"></div><div><label>Usual wake-up</label><input type="time" data-ob="wake" value="${o.wake}"></div></div>
+  <label>Hours of sleep you feel best on</label><input type="number" step=".5" min="4" max="12" data-ob="sleepGoal" value="${o.sleepGoal}">`;
+ if(s===2)h=`<h1>What do you want to track?</h1><p class="sub">Fewer is better: you'll fill this in daily. The first five are pre-selected. You can change this any time.</p>
+  <div class="chips">${Object.keys(M).map(m=>`<button class="chip ${o.tracked.includes(m)?'on':''}" data-chip="tracked" data-v="${m}">${M[m].l}</button>`).join('')}</div>`;
+ if(s===3)h=`<h1>When you're off track…</h1><p class="sub">What does it usually look like for you? Pick the warning signs you recognise.</p>${chips('signs',SIGNS,o.signs)}
+  <label>Anything else? (comma separated)</label><input data-ob="signsO" value="${esc(o.signsO)}">`;
+ if(s===4)h=`<h1>What tends to set it off?</h1><p class="sub">Your known triggers. Compass will test these against your data.</p>${chips('triggers',TRIGGERS,o.triggers)}
+  <label>Anything else? (comma separated)</label><input data-ob="trigO" value="${esc(o.trigO)}">`;
+ if(s===5)h=`<h1>What helps you?</h1><p class="sub">These become the first entries in your Playbook, then Compass learns which ones really work.</p>${chips('helpers',HELPERS,o.helpers)}
+  <label>Anything else that helps? (comma separated)</label><input data-ob="helpO" value="${esc(o.helpO)}">
+  <label>What usually makes things worse or doesn't work for you?</label><textarea data-ob="avoid" placeholder="e.g. staying in bed, scrolling, forcing long study sessions…">${esc(o.avoid)}</textarea>`;
+ if(s===6)h=`<h1>Your weekly schedule</h1><p class="sub">Classes, IITM quizzes and deadlines, gym, anything fixed. Add a few now and the rest later (you can skip).</p>
+  <div class="card">${o.schedule.length?o.schedule.sort((a,b)=>(a.day??9)-(b.day??9)||a.start.localeCompare(b.start)).map(b=>`<div class="block"><div class="time">${b.date?shortDate(b.date):DAYN[b.day]}</div><div style="flex:1">${esc(b.title)} <span class="kind">${esc(b.start)}–${esc(b.end)}</span></div><button class="btn sm sec" data-act="delblock" data-id="${b.id}">✕</button></div>`).join(''):'<div class="empty">Nothing added yet</div>'}</div>${schedForm()}`;
+ if(s===7)h=`<h1>Goals and support</h1><p class="sub">Last step.</p>
+  <label>What do you want your life to look like in the next few months?</label><textarea data-ob="goals">${esc(o.goals)}</textarea>
+  <label>Who can you reach out to when things get heavy?</label><input data-ob="support" value="${esc(o.support)}" placeholder="Names of people you trust">
+  <div class="note" style="margin-top:18px">If you ever feel unsafe or think about hurting yourself, contact local emergency services or a helpline right away. In India, Tele-MANAS is available at 14416.</div>`;
+ return `<div class="ob">${bar}${h}${nav}</div>`;
+}
+function finishOB(){
+ const o=OB,sp=t=>t.split(',').map(x=>x.trim()).filter(Boolean);
+ Object.assign(S.profile,{name:o.name.trim(),bed:o.bed,wake:o.wake,sleepGoal:Number(o.sleepGoal)||7.5,tracked:o.tracked.length?o.tracked:['mood'],signs:[...new Set([...o.signs,...sp(o.signsO)])],triggers:[...new Set([...o.triggers,...sp(o.trigO)])],helpers:[...new Set([...o.helpers,...sp(o.helpO)])],avoid:o.avoid,goals:o.goals,support:o.support});
+ S.schedule=o.schedule;
+ for(const h of S.profile.helpers)if(!S.playbook.find(p=>p.then===h))S.playbook.push({id:uid(),when:'',then:h,tried:0,helped:0});
+ S.onboarded=true;save();OB=null;view='today';render();window.scrollTo(0,0);
+ try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+}
+
+/* ---------- views ---------- */
+function vToday(){
+ const t=today(),st=status(),e=S.entries[t],name=S.profile.name;
+ const hr=new Date().getHours(),g=hr<5?'Late night':hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+ const pill=st.level<0?'<span class="pill pn">Learning your baseline</span>':`<span class="pill p${st.level}">${['On track','Drifting','Off track'][st.level]}</span>`;
+ const strip=lastDays(7).map(k=>{const v=val(k,'mood');return `<div class="${v==null?'n':''}" style="height:${v==null?6:v*10}%" title="${shortDate(k)}: ${v==null?'no entry':v}"></div>`}).join('');
+ const days=lastDays(7).map(k=>`<span style="flex:1;text-align:center">${DAYN[parseKey(k).getDay()][0]}</span>`).join('');
+ const ins=insights()[0];
+ const bk=S.lastBackup?Math.floor((Date.now()-S.lastBackup)/864e5):null;
+ const blocks=blocksFor(t);
+ return `<h1>${g}${name?', '+esc(name):''}</h1><p class="sub">${parseKey(t).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})}</p>
+ <div class="grid"><div class="card"><div class="row sp"><h2 style="margin:0">Where you are</h2>${pill}</div>
+  <p class="${st.level<0?'mut':''}" style="margin:12px 0">${st.level<0?esc(st.msg):st.level===0?'Your recent days are in line with your own baseline. Keep doing what you\'re doing.':`Compared to your usual: ${st.flags.map(f=>`<b>${M[f.m].l.toLowerCase()}</b> is ${f.z==null?'low':(f.z<0?'down':'up')}`).join(', ')}.`}</p>
+  <div class="row">${st.level>=1?'<button class="btn" data-go="reset">Open Reset mode</button>':''}<button class="btn ${st.level>=1?'sec':''}" data-go="checkin">${e?'Edit today\'s check-in':'Do today\'s check-in'}</button></div></div>
+  <div class="card"><h2>Mood, last 7 days</h2><div class="dots">${strip}</div><div class="row small mut" style="margin-top:4px;gap:0">${days}</div></div></div>
+ <div class="card"><h2>Today's schedule</h2>${blocks.length?blocks.map(b=>blockRow(b)).join(''):'<div class="empty">Nothing scheduled. <a href="#" data-go="schedule" style="color:var(--acc)">Add something</a></div>'}</div>
+ ${ins?`<div class="card"><h2>A pattern in your data</h2><div>${ins.t}</div><div class="small mut" style="margin-top:6px">Patterns are correlations from your own logs, not proof of cause.</div></div>`:''}
+ ${bk===null||bk>14?`<div class="card note">${bk===null?'You haven\'t backed up yet.':`Last backup was ${bk} days ago.`} Your data lives in this browser only: <a href="#" data-act="export" style="color:var(--acc)">download a backup</a>.</div>`:''}`;
+}
+function vCheckin(){
+ if(!CI)openCheckin(today());
+ const tr=tracked();
+ const group=(title,list)=>list.length?`<label>${title}</label><div class="chips">${list.map(x=>`<button class="chip ${CI.tags.has(x)?'on':''}" data-tag="${esc(x)}">${esc(x)}</button>`).join('')}</div>`:'';
+ return `<h1>Check-in</h1><p class="sub">About a minute. Skip anything you don't know.</p>
+ <div class="card"><label style="margin-top:0">Date</label><input type="date" id="ci-date" value="${CI.date}" max="${today()}" style="max-width:200px">
+ ${tr.map(m=>M[m].t==='scale'?`<label>${M[m].l} <span class="mut small">(1–10${m==='stress'?', 10 = very stressed':''})</span></label><div class="scale">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button data-scale="${m}" data-v="${n}" class="${CI.vals[m]===n?'on':''}">${n}</button>`).join('')}</div>`:`<label>${M[m].l} <span class="mut small">(${M[m].u})</span></label><input type="number" inputmode="decimal" min="0" max="${M[m].max}" step="${M[m].step}" data-num="${m}" value="${CI.vals[m]==null?'':CI.vals[m]}" style="max-width:200px">`).join('')}
+ ${group('Signs I noticed',S.profile.signs)}${group('Triggers today',S.profile.triggers)}${group('What I did',S.profile.helpers)}${group('Mine',S.profile.extra)}
+ <div class="row" style="margin-top:10px"><input id="ci-extra" placeholder="Add your own tag" style="max-width:240px"><button class="btn sec sm" data-act="addtag">Add</button></div>
+ <label>Notes</label><textarea id="ci-note" placeholder="What happened today? How did it feel?">${esc(CI.note)}</textarea>
+ <div style="margin-top:18px"><button class="btn" data-act="savecheckin">Save check-in</button></div></div>`;
+}
+function openCheckin(date){const e=S.entries[date]||{},v={};for(const m in M)if(typeof e[m]==='number')v[m]=e[m];CI={date,vals:v,tags:new Set(e.tags||[]),note:e.note||''}}
+function vPatterns(){
+ const tr=tracked(),ins=insights(),n=Object.keys(S.entries).length;
+ const cards=tr.map(m=>{
+  const A=lastDays(PW).map(k=>val(k,m)).filter(v=>v!=null),half=Math.floor(PW/2);
+  const r=lastDays(half).map(k=>val(k,m)).filter(v=>v!=null),p=lastDays(PW).slice(0,PW-half).map(k=>val(k,m)).filter(v=>v!=null);
+  const d=r.length&&p.length?mean(r)-mean(p):null;
+  return `<div class="card"><div class="row sp"><h2 style="margin:0">${M[m].l}</h2><span class="small mut">avg ${f1(mean(A))}${M[m].u||''}${d==null?'':` · ${d>0.05?'▲':d<-0.05?'▼':'▶'} ${f1(Math.abs(d))} vs earlier`}</span></div>${chart(m,PW)}</div>`}).join('');
+ let dow='';
+ if(tr.includes('mood')){const by=[[],[],[],[],[],[],[]];for(const k of lastDays(90)){const v=val(k,'mood');if(v!=null)by[parseKey(k).getDay()].push(v)}
+  const order=[1,2,3,4,5,6,0];
+  dow=`<div class="card"><h2>Mood by day of week</h2>${order.map(d=>`<div class="row" style="margin:6px 0;flex-wrap:nowrap"><span style="width:36px" class="mut">${DAYN[d]}</span><div class="bar" style="flex:1"><i style="width:${by[d].length?mean(by[d])*10:0}%"></i></div><span style="width:34px;text-align:right">${by[d].length?f1(mean(by[d])):'–'}</span></div>`).join('')}</div>`}
+ return `<div class="row sp"><div><h1>Patterns</h1><p class="sub" style="margin:0 0 18px">${n} day${n===1?'':'s'} logged</p></div><div class="chips">${[14,30,90].map(d=>`<button class="chip ${PW===d?'on':''}" data-pw="${d}">${d} days</button>`).join('')}</div></div>
+ <div class="card"><h2>What your data says</h2>${ins.length?ins.map(i=>`<div class="insight">${i.t}<div class="small mut">based on ${i.n} days</div></div>`).join(''):'<div class="empty">Patterns show up after roughly 2 weeks of logging.<br>Tag what you did and what you noticed: that is what makes them sharper.</div>'}
+ <div class="small mut" style="margin-top:8px">These are correlations in your own data, not proof of cause.</div></div>
+ ${dow}<div class="grid">${cards}</div>
+ <div class="card"><h2>Get a second opinion from any AI</h2><p class="mut" style="margin-top:0">Creates a summary you can paste into any chatbot, with no AI account or setup in Compass. No name, no journal text unless you choose to include notes.</p><div class="row"><button class="btn sec" data-act="aisummary" data-mode="week">This week</button><button class="btn sec" data-act="aisummary" data-mode="month">Last 30 days</button></div></div>`;
+}
+function vReset(){
+ const st=status(),acts=rankedActions();
+ const head=st.level<0?`<span class="pill pn">Not enough data</span><p class="mut">${esc(st.msg)}</p>`:`<span class="pill p${st.level}">${['On track','Drifting','Off track'][st.level]}</span>${st.flags.length?`<div style="margin-top:12px">${st.flags.map(f=>`<div class="block"><div style="flex:1"><b>${M[f.m].l}</b></div><div class="mut">last 3 days ${f1(f.rm)}${M[f.m].u||''} ${f.bm!=null?`· your usual ${f1(f.bm)}${M[f.m].u||''}`:''}</div></div>`).join('')}</div>`:'<p class="mut">Nothing stands out against your baseline.</p>'}${st.signs&&st.signs.length?`<p style="margin-bottom:0">Signs you logged: ${st.signs.map(esc).join(', ')}</p>`:''}`;
+ const weak=S.playbook.filter(p=>p.tried>=3&&p.helped/p.tried<.4);
+ return `<h1>Reset mode</h1><p class="sub">Not feeling right? Start here. No judgement, just next steps.</p>
+ <div class="card"><h2>Your signals</h2>${head}</div>
+ <div class="card row sp"><div><b>Want a second opinion?</b><div class="small mut">Creates a ready-to-paste summary of your data for any AI chat (Claude, ChatGPT, Gemini…).</div></div><button class="btn sec" data-act="aisummary" data-mode="reset">Create summary</button></div>
+ <div class="card"><h2>Basics first (5 minutes)</h2><div class="chips"><span class="chip">Drink water</span><span class="chip">Eat something real</span><span class="chip">Step outside</span><span class="chip">Text one person</span><span class="chip">Pick the smallest task</span></div></div>
+ <div class="card"><h2>What has worked for you</h2><p class="small mut" style="margin-top:0">Ranked by your own results. After you try one, tell Compass if it helped, and the ranking learns.</p>
+ ${acts.length?acts.slice(0,6).map(a=>`<div class="block" style="align-items:center"><div style="flex:1"><b>${esc(a.then)}</b>${a.when?`<div class="small mut">for: ${esc(a.when)}</div>`:''}<div class="small mut">${a.tried?`helped ${a.helped} of ${a.tried} times`:'not tried yet'}</div></div><button class="btn sm" data-act="rate" data-id="${a.id}" data-h="1">Helped</button><button class="btn sm sec" data-act="rate" data-id="${a.id}" data-h="0">Didn't</button></div>`).join(''):'<div class="empty">Your playbook is empty. Add actions in Playbook.</div>'}</div>
+ ${weak.length?`<div class="card"><h2>Not really working</h2>${weak.map(p=>`<div class="block"><div style="flex:1">${esc(p.then)}</div><div class="mut">helped ${p.helped}/${p.tried}</div></div>`).join('')}</div>`:''}
+ <div class="card"><h2>If it feels heavier than that</h2><p style="margin-top:0">${S.profile.support?`You said you can reach out to: <b>${esc(S.profile.support)}</b>. Message one of them now, even just "rough day, can we talk?"`:'Reaching out to someone you trust, or a professional, is a strong move, not a weak one.'}</p><p class="mut small" style="margin-bottom:0">If you feel unsafe or are thinking about hurting yourself, contact local emergency services or Tele-MANAS (India) at 14416.</p></div>`;
+}
+function vSchedule(){
+ const order=[1,2,3,4,5,6,0],dated=S.schedule.filter(b=>b.date&&b.date>=today()).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
+ return `<h1>Schedule</h1><p class="sub">Your fixed week plus one-off deadlines.</p>
+ <div class="grid">${order.map(d=>{const bl=S.schedule.filter(b=>!b.date&&b.day===d).sort((a,b)=>a.start.localeCompare(b.start));return `<div class="card"><h2>${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d]}</h2>${bl.length?bl.map(b=>blockRow(b,true)).join(''):'<div class="mut small">Free</div>'}</div>`}).join('')}</div>
+ ${dated.length?`<div class="card"><h2>Upcoming dates</h2>${dated.map(b=>blockRow(b,true)).join('')}</div>`:''}
+ <div class="card"><h2>Add a block</h2>${schedForm()}</div>`;
+}
+function vPlaybook(){
+ const whens=[...S.profile.signs,...S.profile.triggers];
+ return `<h1>Playbook</h1><p class="sub">Your own rules: what to do, and when. Compass tracks what actually helps.</p>
+ <div class="card"><h2>Actions</h2>${S.playbook.length?S.playbook.map(p=>`<div class="block" style="align-items:center"><div style="flex:1"><b>${esc(p.then)}</b>${p.when?`<div class="small mut">when: ${esc(p.when)}</div>`:'<div class="small mut">any time</div>'}</div><div class="mut small">${p.tried?`${p.helped}/${p.tried} helped`:'untried'}</div><button class="btn sm sec" data-act="delplay" data-id="${p.id}">✕</button></div>`).join(''):'<div class="empty">Empty</div>'}</div>
+ <div class="card"><h2>Add an action</h2><label style="margin-top:0">What to do</label><input id="pb-then" placeholder="e.g. 20 min walk without phone">
+ <label>When (optional)</label><select id="pb-when"><option value="">Any time I'm off track</option>${whens.map(w=>`<option>${esc(w)}</option>`).join('')}</select>
+ <div style="margin-top:14px"><button class="btn" data-act="addplay">Add</button></div></div>
+ ${S.profile.avoid?`<div class="card"><h2>Things that don't work for me</h2><p style="margin:0;white-space:pre-wrap">${esc(S.profile.avoid)}</p></div>`:''}
+ ${S.profile.goals?`<div class="card"><h2>My goals</h2><p style="margin:0;white-space:pre-wrap">${esc(S.profile.goals)}</p></div>`:''}`;
+}
+function vSettings(){
+ return `<h1>Settings</h1><p class="sub">Your data never leaves this browser unless you export it.</p>
+ <div class="card"><h2>Tracked metrics</h2><div class="chips">${Object.keys(M).map(m=>`<button class="chip ${S.profile.tracked.includes(m)?'on':''}" data-chip="tracked" data-v="${m}">${M[m].l}</button>`).join('')}</div></div>
+ <details class="card"${CH.aiMsg?' open':''}><summary>Advanced: built-in AI Coach (optional, needs Ollama on this computer)</summary><div style="margin-top:12px">${aiCard(true)}<p class="small mut">When a model is connected, a Coach tab appears in the menu. You don't need this: the paste-into-any-AI summaries work without it.</p></div></details>
+ <div class="card"><h2>Backup</h2><p class="mut" style="margin-top:0">Browser data can be wiped by clearing site data. Download a backup regularly.${S.lastBackup?` Last: ${new Date(S.lastBackup).toLocaleDateString()}.`:''}</p>
+ <div class="row"><button class="btn" data-act="export">Download backup</button><button class="btn sec" data-act="import">Restore from backup</button></div><input type="file" id="imp" accept=".json" hidden>
+ <h2 style="margin-top:20px">Move data to another device</h2><p class="mut small" style="margin-top:0">Phone and laptop keep separate data. To move it: press <b>Copy data</b> here, send the text to yourself (WhatsApp, Notes, email), then open Compass on the other device and press <b>Paste data</b>. This <b>replaces</b> the data on the device you paste into.</p>
+ <div class="row"><button class="btn sec" data-act="copydata">Copy data</button><button class="btn sec" data-act="pastedata">Paste data</button></div></div>
+ <div class="card"><h2>Setup</h2><button class="btn sec" data-act="redo">Re-run setup questionnaire</button><p class="small mut">Keeps all your logs.</p></div>
+ <div class="card"><h2>Danger zone</h2><button class="btn bad" data-act="wipe">Delete everything</button></div>`;
+}
+
+/* ---------- coach (local AI via Ollama) ---------- */
+let CH={busy:false,ctl:null,err:'',models:[],aiMsg:''};
+const aiBase=()=>(S.ai.url||'http://localhost:11434').trim().replace(/\/+$/,'');
+function aiCard(bare){
+ return `<div${bare?'':' class="card"'}>${bare?'':'<h2>Local AI connection</h2>'}
+ <p class="mut small" style="margin-top:0">Free and private: a model runs on your own laptop through Ollama. Nothing is sent to any server.</p>
+ <label style="margin-top:0">Ollama address</label><input data-ai="url" value="${esc(S.ai.url)}">
+ <div class="row" style="margin-top:12px"><button class="btn sec" data-act="aicheck">Check connection</button><span class="small ${CH.aiMsg.startsWith('Connected')?'':'mut'}">${esc(CH.aiMsg)}</span></div>
+ ${CH.models.length?`<label>Model</label><select data-ai="model">${CH.models.map(m=>`<option ${m===S.ai.model?'selected':''}>${esc(m)}</option>`).join('')}</select>`:(S.ai.model?`<p class="small mut">Selected model: <code>${esc(S.ai.model)}</code></p>`:'')}
+ <details style="margin-top:14px"${S.ai.model?'':' open'}><summary>One-time setup steps</summary><ol class="small">
+ <li>Install Ollama from <b>ollama.com</b> (free) and open it.</li>
+ <li>In a terminal run <code>ollama pull qwen2.5:3b</code>. A 3B model is fast on a laptop GPU. For better answers try a 7B model such as <code>qwen2.5:7b</code> (slower).</li>
+ <li>Allow this page to talk to Ollama: create the environment variable <code>OLLAMA_ORIGINS</code> with value <code>*</code> (Windows: search "Edit environment variables for your account" → New), then quit and reopen Ollama. This is needed because Compass opens as a local file.</li>
+ <li>Press <b>Check connection</b> above and pick your model.</li></ol></details></div>`;
+}
+function dataContext(){
+ const rows=lastDays(14).map(k=>{const e=S.entries[k];if(!e)return null;const vals=tracked().map(m=>`${M[m].l} ${val(k,m)==null?'-':val(k,m)}`).join(', ');return `${k} (${DAYN[parseKey(k).getDay()]}): ${vals}${(e.tags||[]).length?' | tags: '+e.tags.join(', '):''}${e.note&&k>addDays(today(),-8)?' | note: '+e.note.slice(0,200):''}`}).filter(Boolean).join('\n');
+ const st=status(),ins=insights().slice(0,5).map(i=>'- '+i.t.replace(/<[^>]+>/g,'')).join('\n');
+ const pb=S.playbook.filter(p=>p.tried).map(p=>`- ${p.then}${p.when?' (for '+p.when+')':''}: helped ${p.helped}/${p.tried}`).join('\n');
+ const sched=blocksFor(today()).map(b=>`${b.start}-${b.end} ${b.title}`).join('; ');
+ return `TODAY: ${today()} (${DAYN[parseKey(today()).getDay()]})\nSTATUS vs own baseline: ${st.level<0?'not enough data yet':['on track','drifting','off track'][st.level]}${st.flags&&st.flags.length?' (changed: '+st.flags.map(f=>M[f.m].l+' recent '+f1(f.rm)+(f.bm!=null?' vs usual '+f1(f.bm):'')).join('; ')+')':''}\nLAST 14 DAYS (scales 1-10):\n${rows||'(no entries yet)'}\nPATTERNS FOUND:\n${ins||'(none yet)'}\nPLAYBOOK RESULTS:\n${pb||'(nothing tried yet)'}\nWARNING SIGNS: ${S.profile.signs.join(', ')||'-'}\nTRIGGERS: ${S.profile.triggers.join(', ')||'-'}\nTHINGS THAT HELP: ${S.profile.helpers.join(', ')||'-'}\nTHINGS THAT DON'T WORK: ${S.profile.avoid||'-'}\nGOALS: ${S.profile.goals||'-'}\nSLEEP: usually ${S.profile.bed} to ${S.profile.wake}, feels best on ${S.profile.sleepGoal}h\nTODAY'S SCHEDULE: ${sched||'nothing fixed'}`;
+}
+function coachSystem(){
+ return `You are Compass Coach, a warm, practical and honest personal coach for ${S.profile.name||'the user'}. You are not a doctor and you never diagnose. Use only the data below and what the user tells you; if the data is thin, say so instead of guessing. Be concise (under 180 words unless asked for more), concrete, and suggest small next steps drawn from their own playbook and patterns. Do not just validate: kindly name real patterns, including uncomfortable ones. If the user mentions wanting to hurt themselves or not wanting to live, respond with care, encourage them to contact a trusted person and emergency services or Tele-MANAS (India, 14416) right away, and keep that the focus.\n\n${dataContext()}`;
+}
+async function aiCheck(){
+ CH.aiMsg='Checking…';render();
+ try{
+  const r=await fetch(aiBase()+'/api/tags');if(!r.ok)throw 0;const j=await r.json();
+  CH.models=(j.models||[]).map(m=>m.name);
+  if(!CH.models.length)CH.aiMsg='Connected, but no model is installed yet. Run: ollama pull qwen2.5:3b';
+  else{CH.aiMsg=`Connected. ${CH.models.length} model${CH.models.length>1?'s':''} found.`;if(!CH.models.includes(S.ai.model))S.ai.model=CH.models[0];save()}
+ }catch(e){CH.aiMsg="Can't reach Ollama. Check that it is running and that OLLAMA_ORIGINS is set (steps below)."}
+ render();
+}
+async function ask(text){
+ text=(text||'').trim();if(!text||CH.busy)return;
+ if(!S.ai.model){CH.err='Pick a model first (connect below).';render();return}
+ S.chat.push({role:'user',content:text});const a={role:'assistant',content:''};S.chat.push(a);
+ CH.busy=true;CH.err='';CH.ctl=new AbortController();render();window.scrollTo(0,document.body.scrollHeight);
+ try{
+  const hist=S.chat.slice(0,-1).slice(-12).map(m=>({role:m.role,content:m.content}));
+  const r=await fetch(aiBase()+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},signal:CH.ctl.signal,body:JSON.stringify({model:S.ai.model,stream:true,options:{num_ctx:4096},messages:[{role:'system',content:coachSystem()},...hist]})});
+  if(!r.ok)throw new Error(r.status===404?'Model not found. Check the model name in Settings.':'Ollama returned an error ('+r.status+').');
+  const rd=r.body.getReader(),dec=new TextDecoder();let buf='';
+  for(;;){
+   const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});
+   let i;while((i=buf.indexOf('\n'))>=0){
+    const line=buf.slice(0,i).trim();buf=buf.slice(i+1);if(!line)continue;
+    try{const j=JSON.parse(line);if(j.message&&j.message.content){a.content+=j.message.content;const el=$('#chatbox .msg:last-child .t');if(el)el.textContent=a.content}}catch(x){}
+   }
+  }
+ }catch(e){
+  if(e.name!=='AbortError'){CH.err=/Failed to fetch|fetch failed|NetworkError|Load failed/i.test(e.message)?"Couldn't reach Ollama. Is it running, and is OLLAMA_ORIGINS set?":e.message;if(!a.content)S.chat.splice(S.chat.indexOf(a),1)}
+ }
+ CH.busy=false;CH.ctl=null;if(!a.content&&S.chat.includes(a))S.chat.splice(S.chat.indexOf(a),1);
+ S.chat=S.chat.slice(-40);save();if(view==='coach'){render();window.scrollTo(0,document.body.scrollHeight)}
+}
+function vCoach(){
+ const QP=['Why do I feel off lately?','Review my week','Plan my next 3 days','What actually works for me?'];
+ const msgs=S.chat.map((m,i)=>`<div class="msg ${m.role==='user'?'u':'a'}"><span class="t">${esc(m.content)||(CH.busy&&i===S.chat.length-1?'…':'')}</span></div>`).join('');
+ return `<h1>Coach</h1><p class="sub">Ask anything about your patterns. It reads your own data, runs on your laptop, and stays private.</p>
+ ${(!S.ai.model||CH.err)?aiCard():''}
+ ${CH.err?`<div class="card note" style="border-left-color:var(--bad)">${esc(CH.err)}</div>`:''}
+ <div class="card" id="chatbox">${msgs||'<div class="empty">Nothing yet. Pick a question below or type your own.</div>'}</div>
+ <div class="chips" style="margin-bottom:12px">${QP.map(q=>`<button class="chip" data-act="qp" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+ <div class="row" style="flex-wrap:nowrap;align-items:flex-end"><textarea id="chat-in" placeholder="What's going on?" style="min-height:48px;height:48px"></textarea>${CH.busy?'<button class="btn bad" data-act="stopchat">Stop</button>':'<button class="btn" data-act="send">Send</button>'}</div>
+ <div class="row sp small mut" style="margin-top:12px"><span>AI can be wrong and isn't medical advice.${S.ai.model?` Model: ${esc(S.ai.model)}`:''}</span>${S.chat.length?'<a href="#" data-act="clearchat" style="color:var(--mut)">Clear chat</a>':''}</div>`;
+}
+
+/* ---------- render ---------- */
+const NAV=[['today','◉','Today'],['checkin','✎','Log'],['patterns','∿','Patterns'],['reset','↺','Reset'],['coach','✦','Coach'],['schedule','▦','Plan'],['playbook','★','Playbook'],['settings','⚙','Prefs']];
+function render(){
+ const app=$('#app'),nav=$('#nav');
+ if(!S.onboarded){if(!OB)startOB();nav.style.display='none';app.innerHTML=renderOB();return}
+ nav.style.display='';
+ if(view==='coach'&&!S.ai.model&&!CH.models.length){view='settings'}
+ nav.innerHTML=`<div class="brand">Com<span>pass</span></div>`+NAV.filter(n=>n[0]!=='coach'||S.ai.model).map(([k,i,l])=>`<button class="${view===k?'on':''}" data-go="${k}"><i>${i}</i>${l}</button>`).join('');
+ const V={today:vToday,checkin:vCheckin,patterns:vPatterns,reset:vReset,coach:vCoach,schedule:vSchedule,playbook:vPlaybook,settings:vSettings};
+ app.innerHTML=V[view]();
+}
+function go(v){view=v;if(v==='checkin')openCheckin(today());render();window.scrollTo(0,0)}
+
+let SUM={mode:'week',notes:false};
+const SUMMODES=[['week','This week'],['reset',"I'm off track"],['month','Last 30 days']];
+function weeklySummary(){
+ const n=SUM.mode==='month'?30:7,since=addDays(today(),-7);
+ const rows=lastDays(n).filter(k=>S.entries[k]).map(k=>{const e=S.entries[k];return `${k} (${DAYN[parseKey(k).getDay()]}): `+tracked().map(m=>`${M[m].l} ${val(k,m)==null?'-':val(k,m)}`).join(', ')+((e.tags||[]).length?` | tags: ${e.tags.join(', ')}`:'')+(SUM.notes&&e.note&&k>since?` | note: ${e.note.slice(0,200)}`:'')}).join('\n');
+ const st=status();
+ const ins=insights().slice(0,5).map(i=>'- '+i.t.replace(/<[^>]+>/g,'')).join('\n');
+ const pb=S.playbook.filter(p=>p.tried).map(p=>`- ${p.then}${p.when?' (for '+p.when+')':''}: helped ${p.helped} of ${p.tried} times`).join('\n');
+ const ask={
+  week:"Please act as a supportive, practical coach (not a doctor). Tell me: 1) what you notice in my week, 2) the 2-3 most likely drivers, 3) a small plan for the next 3 days. Keep it concrete and kind.",
+  reset:"I'm feeling off track right now. Please act as a supportive, practical coach (not a doctor). Based on my own data: 1) what likely changed compared with my usual, 2) the 2-3 most probable drivers, 3) the first 3 small things to try today, using what has worked for me before where possible, 4) what to watch for over the next 3 days. Keep it concrete and kind, and tell me honestly if anything here suggests I should talk to someone.",
+  month:"Please act as a supportive, practical coach (not a doctor). Look at the last 30 days and tell me: 1) the biggest patterns, 2) what seems to help me and what doesn't, 3) one or two habits worth changing, with a simple way to test each over the next 2 weeks. Be honest, concrete and kind."
+ }[SUM.mode];
+ return `I'm tracking my own wellbeing. Here is my data for the last ${n} days (scales are 1-10, other units as labelled):\n\n${rows||'(no entries)'}\n\nStatus vs my own baseline: ${st.level<0?'not enough data':['on track','drifting','off track'][st.level]}${st.flags&&st.flags.length?' (changed: '+st.flags.map(f=>M[f.m].l+' recent '+f1(f.rm)+(f.bm!=null?' vs usual '+f1(f.bm):'')).join('; ')+')':''}\n\nPatterns found in my data:\n${ins||'(none yet)'}\n\nThings I've tried and how they went:\n${pb||'(nothing rated yet)'}\n\nMy warning signs: ${S.profile.signs.join(', ')||'-'}\nMy triggers: ${S.profile.triggers.join(', ')||'-'}\nThings that usually help me: ${S.profile.helpers.join(', ')||'-'}\nThings that don't work for me: ${S.profile.avoid||'-'}\n\n${ask}`;
+}
+function showSummary(){
+ showModal(`<h2>Summary for any AI chat</h2><p class="mut small" style="margin-top:0">Copy this into Claude, ChatGPT, Gemini or any chatbot. It contains no name, only your numbers and tags. Read it before you paste.</p>
+ <div class="chips" style="margin-bottom:10px">${SUMMODES.map(([k,l])=>`<button class="chip ${SUM.mode===k?'on':''}" data-sm="${k}">${l}</button>`).join('')}<button class="chip ${SUM.notes?'on':''}" data-smn="1">Include my recent notes</button></div>
+ <textarea id="sumta" readonly>${esc(weeklySummary())}</textarea><div class="row" style="margin-top:12px"><button class="btn" data-act="copysum">Copy</button><button class="btn sec" data-act="closemodal">Close</button></div>`);
+}
+function showModal(h){$('#modalc').innerHTML=h;$('#modal').classList.add('on')}
+function hideModal(){$('#modal').classList.remove('on')}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-go],[data-act],[data-chip],[data-tag],[data-scale],[data-pw],[data-sm],[data-smn]');
+ if(e.target.id==='modal'){hideModal();return}
+ if(!t)return;
+ if(t.dataset.sm){SUM.mode=t.dataset.sm;showSummary();return}
+ if(t.dataset.smn){SUM.notes=!SUM.notes;showSummary();return}
+ if(t.dataset.go){e.preventDefault();go(t.dataset.go);return}
+ if(t.dataset.pw){PW=Number(t.dataset.pw);render();return}
+ if(t.dataset.scale){const m=t.dataset.scale,v=Number(t.dataset.v);if(CI.vals[m]===v)delete CI.vals[m];else CI.vals[m]=v;render();return}
+ if(t.dataset.tag){const g=t.dataset.tag;CI.tags.has(g)?CI.tags.delete(g):CI.tags.add(g);CI.note=$('#ci-note')?$('#ci-note').value:CI.note;render();return}
+ if(t.dataset.chip){
+  const g=t.dataset.chip,v=t.dataset.v,arr=S.onboarded?S.profile[g]:OB[g];
+  const i=arr.indexOf(v);i>=0?arr.splice(i,1):arr.push(v);if(S.onboarded)save();render();return}
+ const a=t.dataset.act;if(!a)return;
+ if(a==='obnext'){
+  if(OB.step===0&&!OB.name.trim()){toast('Tell me what to call you');return}
+  if(OB.step===OBN-1)finishOB();else{OB.step++;render();window.scrollTo(0,0)}
+ }
+ else if(a==='obback'){OB.step--;render();window.scrollTo(0,0)}
+ else if(a==='addblock')addBlock();
+ else if(a==='delblock'){const arr=S.onboarded?S.schedule:OB.schedule,i=arr.findIndex(b=>b.id===t.dataset.id);if(i>=0)arr.splice(i,1);if(S.onboarded)save();render()}
+ else if(a==='addtag'){const v=$('#ci-extra').value.trim();if(!v)return;CI.note=$('#ci-note').value;if(!S.profile.extra.includes(v)&&!allTags().includes(v))S.profile.extra.push(v);CI.tags.add(v);save();render()}
+ else if(a==='savecheckin'){
+  const note=$('#ci-note').value.trim(),en={};
+  for(const m in CI.vals)if(typeof CI.vals[m]==='number'&&!isNaN(CI.vals[m]))en[m]=CI.vals[m];
+  en.tags=[...CI.tags];if(note)en.note=note;en.ts=Date.now();
+  if(Object.keys(en).length<=2&&!note&&!en.tags.length){toast('Add at least one thing first');return}
+  S.entries[CI.date]=en;save();CI=null;toast('Saved');go('today');
+ }
+ else if(a==='rate'){const p=S.playbook.find(x=>x.id===t.dataset.id);if(p){p.tried++;if(t.dataset.h==='1')p.helped++;save();render();toast('Noted. Ranking updated')}}
+ else if(a==='addplay'){const th=$('#pb-then').value.trim();if(!th){toast('What should the action be?');return}S.playbook.push({id:uid(),when:$('#pb-when').value,then:th,tried:0,helped:0});save();render()}
+ else if(a==='delplay'){S.playbook=S.playbook.filter(p=>p.id!==t.dataset.id);save();render()}
+ else if(a==='export'){e.preventDefault();const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),u=URL.createObjectURL(b),l=document.createElement('a');l.href=u;l.download=`compass-backup-${today()}.json`;l.click();setTimeout(()=>URL.revokeObjectURL(u),1000);S.lastBackup=Date.now();save();toast('Backup downloaded')}
+ else if(a==='import')$('#imp').click();
+ else if(a==='redo'){startOB();S.onboarded=false;render()}
+ else if(a==='wipe'){if(confirm('Delete ALL your data from this browser? This cannot be undone.')&&confirm('Really delete everything?')){localStorage.removeItem(KEY);S=blank();OB=null;view='today';render()}}
+ else if(a==='aisummary'){SUM.mode=t.dataset.mode||'week';SUM.notes=false;showSummary()}
+ else if(a==='copysum'){const ta=$('#sumta');ta.select();try{navigator.clipboard.writeText(ta.value).then(()=>toast('Copied'),()=>{document.execCommand('copy');toast('Copied')})}catch(x){document.execCommand('copy');toast('Copied')}}
+ else if(a==='closemodal')hideModal();
+ else if(a==='aicheck')aiCheck();
+ else if(a==='send'){const i=$('#chat-in');if(i&&i.value.trim())ask(i.value)}
+ else if(a==='qp')ask(t.dataset.q);
+ else if(a==='stopchat'){if(CH.ctl)CH.ctl.abort()}
+ else if(a==='clearchat'){e.preventDefault();if(confirm('Clear this conversation?')){S.chat=[];CH.err='';save();render()}}
+ else if(a==='copydata'){
+  const txt=JSON.stringify(S);
+  const done=()=>{S.lastBackup=Date.now();save();toast('Copied. Paste it on your other device')};
+  const fallback=()=>showModal(`<h2>Copy this text</h2><p class="mut small" style="margin-top:0">Select all, copy, and paste it into Compass on your other device (Prefs → Paste data).</p><textarea id="datata" readonly>${esc(txt)}</textarea><div class="row" style="margin-top:12px"><button class="btn sec" data-act="closemodal">Close</button></div>`);
+  try{navigator.clipboard.writeText(txt).then(done,fallback)}catch(x){fallback()}
+ }
+ else if(a==='pastedata'){showModal(`<h2>Paste data</h2><p class="mut small" style="margin-top:0">Paste the text you copied from your other device. This replaces everything on <b>this</b> device.</p><textarea id="datata" placeholder="Paste here"></textarea><div class="row" style="margin-top:12px"><button class="btn" data-act="dopaste">Replace my data</button><button class="btn sec" data-act="closemodal">Cancel</button></div>`)}
+ else if(a==='dopaste'){
+  try{
+   const d=JSON.parse($('#datata').value.trim());if(!d||typeof d.entries!=='object'||!d.profile)throw 0;
+   if(!confirm('Replace all data on this device with the pasted data?'))return;
+   const b=blank();S=Object.assign(b,d,{profile:Object.assign(b.profile,d.profile),ai:Object.assign(b.ai,d.ai||{})});
+   save();hideModal();OB=null;CI=null;view='today';render();toast('Data restored');
+  }catch(x){toast("That doesn't look like Compass data")}
+ }
+});
+document.addEventListener('input',e=>{
+ const t=e.target;
+ if(t.dataset.ob&&OB){OB[t.dataset.ob]=t.value}
+ if(t.dataset.ai){S.ai[t.dataset.ai]=t.value;save()}
+ if(t.dataset.num&&CI){t.value===''?delete CI.vals[t.dataset.num]:CI.vals[t.dataset.num]=Number(t.value)}
+});
+document.addEventListener('change',e=>{
+ const t=e.target;
+ if(t.id==='ci-date'&&CI){CI.note=$('#ci-note').value;openCheckin(t.value||today());render()}
+ if(t.id==='imp'&&t.files[0]){
+  const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.entries||!d.profile)throw 0;if(confirm('Replace current data with this backup?')){S=Object.assign(blank(),d);save();toast('Restored');render()}}catch(x){toast('That file does not look like a Compass backup')}};r.readAsText(t.files[0]);t.value='';
+ }
+});
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape')hideModal();
+ if(e.key==='Enter'&&!e.shiftKey&&e.target.id==='chat-in'){e.preventDefault();if(e.target.value.trim())ask(e.target.value)}
+});
+try{if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}
+render();
+</script>
+</body>
+</html>
